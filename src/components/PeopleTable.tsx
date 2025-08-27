@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Person } from '../types';
 import { Loader } from './Loader';
 import { PersonLink } from './PersonLink';
+import { useParams } from 'react-router-dom';
 
 type Props = {
   people: Person[];
@@ -42,17 +43,89 @@ export const PeopleTable: React.FC<Props> = ({
                 <th>Died</th>
                 <th>Mother</th>
                 <th>Father</th>
+                <th>Age</th>
+                <th>Century</th>
               </tr>
             </thead>
 
             <tbody>
-              {people.map(person => (
-                <PersonLink key={person.slug} person={person} people={people} />
-              ))}
+              <PeopleRows people={people} />
             </tbody>
           </table>
         )}
       </div>
     </div>
+  );
+};
+
+type RowsProps = { people: Person[] };
+
+const PeopleRows: React.FC<RowsProps> = ({ people }) => {
+  const { slug } = useParams();
+
+  const nameToPerson = useMemo(() => {
+    const map = new Map<string, Person>();
+
+    people.forEach(p => {
+      map.set(p.name, p);
+    });
+
+    return map;
+  }, [people]);
+
+  const getAge = (p: Person) => p.died - p.born;
+  const getCentury = (p: Person) => Math.ceil(p.died / 100);
+
+  return (
+    <>
+      {people.map(person => {
+        const isSelected = slug === person.slug;
+
+        const motherName = person.motherName || '';
+        const fatherName = person.fatherName || '';
+
+        const mother = motherName ? nameToPerson.get(motherName) : undefined;
+        const father = fatherName ? nameToPerson.get(fatherName) : undefined;
+
+        return (
+          <tr
+            key={person.slug}
+            data-cy="person"
+            className={isSelected ? 'has-background-warning' : ''}
+          >
+            <td>
+              <PersonLink person={person} />
+            </td>
+            <td>{person.sex}</td>
+            <td>{person.born}</td>
+            <td>{person.died}</td>
+            <td>
+              {motherName ? (
+                mother ? (
+                  <PersonLink person={mother} />
+                ) : (
+                  <span className="has-text-danger">{motherName}</span>
+                )
+              ) : (
+                <span>-</span>
+              )}
+            </td>
+            <td>
+              {fatherName ? (
+                father ? (
+                  <PersonLink person={father} />
+                ) : (
+                  <span>{fatherName}</span>
+                )
+              ) : (
+                <span>-</span>
+              )}
+            </td>
+            <td>{getAge(person)}</td>
+            <td>{getCentury(person)}</td>
+          </tr>
+        );
+      })}
+    </>
   );
 };
